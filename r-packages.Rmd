@@ -26,6 +26,8 @@ output:
   - `shiny`
 - Debugging:
   - `profvis`
+- Reproducibility:
+  - `drake`
 
 ```{r include=FALSE}
 library(tidyverse)
@@ -64,7 +66,8 @@ unique(iris$Species) %>% length()
 `tibble` is "a modern reimagining of the data.frame"
 
 ```{r}
-iris %>% as_tibble() %>% print(n=5) # print(as_tibble(iris), n = 5)
+iris <- iris %>% as_tibble()
+iris %>% print(n=5)
 ```
 
 `readr` implements APIs for reading from and writing to files
@@ -77,20 +80,78 @@ read_csv(file = 'iris.csv.gz')
 # Tidyverse
 
 `dplyr` is a grammar of data manipulation.
-examples here
+```{r}
+iris %>%
+  filter(Species != 'setosa') %>%
+  group_by(Species) %>%
+  summarise_all(mean)
+```
+
+Recommended resource: https://github.com/rstudio/cheatsheets/blob/master/data-transformation.pdf
 
 ---
 # data.table
 
-`data.table` is another reimplementation of `data.frame` and a data processing grammar designed with efficiency in mind at day 1, both memory and data processing efficiency:
+`data.table` is another reimplementation of `data.frame` and a data processing grammar designed with efficiency in mind at day 1.
+It's basic syntax is
+
+![data.table syntax](https://raw.githubusercontent.com/wiki/Rdatatable/data.table/pictures/syntax1.jpg)
+
+However, this stopped from using `data.table` until I had to switch to it.
+
+---
+# data.table
+The memory and data processing efficiency of `data.table`:
   - multi-threading processing
-  - data processing by reference
+  - data processing by reference (the killer feature)
   
-  
+---
+# data.table
+```{r}
+iris_dt <- as.data.table(iris)
+iris <- iris %>%
+  mutate(Sepal.Width = cut_interval(Sepal.Width, n = 3))
+iris_dt[, Sepal.Width := cut_interval(Sepal.Width, n = 3)]
+print(iris, n = 3)
+print(iris_dt, n = 3)
+```
+
+---
+# data.table
+The file reader and writer from `data.table` also guarantee speed compared to `readr`.
+
+|method   | 	                        max. memory | 	avg. time|
+| ------------- |:-------------:| -----:|
+|utils::read.csv + base::rbind |	21.70 GB |	8.13 m|
+|readr::read_csv + purrr:map_dfr |	27.02 GB |	3.43 m|
+|data.table::fread + rbindlist |	15.25 GB |	1.40 m|
+
+More benchmarks: https://h2oai.github.io/db-benchmark/
+Recommend reading: https://github.com/Rdatatable/data.table/wiki
+
 ---
 # purrr from tidyverse
 
 `purrr` is an alternative to R default `apply` function family (`lapply`, `vapply`, etc.). 
+```{r}
+iris %>%
+  split(.$Species) %>%
+  map(~lm(Petal.Length~Petal.Width, data = .x)) %>%
+  map('coefficients')
+```
+
+---
+# purrr from tidyverse
+To me, one of the most important features is the type consistant API
+```{r}
+map_int(1:5, ~.x)
+map_chr(letters, ~.x)
+```
+
+---
+class: inverse, center, middle
+
+# Parallel computation
 
 ---
 # profvis
