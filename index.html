@@ -146,6 +146,7 @@ However, this stopped from using `data.table` until I had to switch to it.
 The memory and data processing efficiency of `data.table`:
   - multi-threading processing
   - data processing by reference (the killer feature)
+  - indexing like a database
   
 ---
 # data.table
@@ -363,7 +364,7 @@ Sys.getpid()
 ```
 
 ```
-## [1] 14725
+## [1] 4706
 ```
 
 ```r
@@ -376,7 +377,7 @@ a
 ```
 
 ```
-## [1] 14783
+## [1] 4762
 ```
 
 ---
@@ -446,8 +447,8 @@ profvis::profvis({
 })
 ```
 
-<div id="htmlwidget-26c5081be8bc14f43d6e" style="width:100%;height:600px;" class="profvis html-widget"></div>
-<script type="application/json" data-for="htmlwidget-26c5081be8bc14f43d6e">{"x":{"message":{"prof":{"time":[1,2,3,4,5,5,6,7,8,9,10,10,11,12,13,14,15,16,17,17,18,19,19,20,21,21,21,21,21,21,21,21,21,21,21,21,21,21,22],"depth":[1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,2,1,1,14,13,12,11,10,9,8,7,6,5,4,3,2,1,1],"label":["c","c","c","c","<GC>","c","c","c","c","c","<GC>","c","c","c","c","c","c","c","<GC>","c","c","<GC>","c","c","%in%","isLoopTopFun","checkSkipLoopCntxt","h","tryInline","cmpCall","cmp","genCode","compile","doTryCatch","tryCatchOne","tryCatchList","tryCatch","compiler:::tryCompile","while (has_next_tweet(i)) {k[i] <- get_tweet_id(); i <- i + 1;}"],"filenum":[1,1,1,1,null,1,1,1,1,1,null,1,1,1,1,1,1,1,null,1,1,null,1,1,null,null,null,null,null,null,null,null,null,null,null,null,null,1,1],"linenum":[5,5,5,5,null,5,5,5,5,5,null,5,5,5,5,5,5,5,null,5,5,null,5,5,null,null,null,null,null,null,null,null,null,null,null,null,null,7,7],"memalloc":[23.4166564941406,32.2445755004883,46.2053604125977,55.18603515625,63.3078231811523,63.3078231811523,33.8598098754883,62.1335220336914,20.8246002197266,52.4435272216797,63.976318359375,63.976318359375,41.2419738769531,61.4172668457031,32.449836730957,52.2788543701172,20.635871887207,41.9494323730469,63.9452438354492,63.9452438354492,35.720573425293,63.996940612793,63.996940612793,30.7209548950195,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,58.8136138916016,60.0746002197266],"meminc":[0,8.82791900634766,13.9607849121094,8.98067474365234,8.12178802490234,0,-29.4480133056641,28.2737121582031,-41.3089218139648,31.6189270019531,11.5327911376953,0,-22.7343444824219,20.17529296875,-28.9674301147461,19.8290176391602,-31.6429824829102,21.3135604858398,21.9958114624023,0,-28.2246704101562,28.2763671875,0,-33.2759857177734,28.092658996582,0,0,0,0,0,0,0,0,0,0,0,0,0,1.260986328125],"filename":["<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>",null,"<expr>","<expr>",null,null,null,null,null,null,null,null,null,null,null,null,null,"<expr>","<expr>"]},"interval":10,"files":[{"filename":"<expr>","content":"profvis::profvis({\n  get_tweet_id <- function() return(1);\n  has_next_tweet <- function(i) i < 10000;\n  k <- numeric(); i <- 1;\n  while (has_next_tweet(i)) {k <- c(k, get_tweet_id()); i <- i + 1;}\n  k <- numeric(); i <- 1;\n  while (has_next_tweet(i)) {k[i] <- get_tweet_id(); i <- i + 1;}\n})","normpath":"<expr>"}],"prof_output":"/tmp/Rtmp87Lh9J/file3985bab3dcd.prof","highlight":{"output":["^output\\$"],"gc":["^<GC>$"],"stacktrace":["^\\.\\.stacktraceo(n|ff)\\.\\.$"]},"split":"h"}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-c53f8930009968f8ce26" style="width:100%;height:600px;" class="profvis html-widget"></div>
+<script type="application/json" data-for="htmlwidget-c53f8930009968f8ce26">{"x":{"message":{"prof":{"time":[1,2,3,4,5,5,6,7,8,9,10,11,12,12,13,14,15,16,17,18,19,19,20,20,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,22],"depth":[1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,2,1,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1,1],"label":["c","c","c","c","<GC>","c","c","c","c","c","c","c","<GC>","c","c","c","c","c","c","c","<GC>","c","while (has_next_tweet(i)) {k <- c(k, get_tweet_id()); i <- i + 1;}","has_next_tweet","findCenvVar","getInlineInfo","isBaseVar","FUN","lapply","unlist","Filter","findLocalsList","findLocals","as.vector","unique","union","addCenvVars","compile","doTryCatch","tryCatchOne","tryCatchList","tryCatch","compiler:::tryCompile","while (has_next_tweet(i)) {k[i] <- get_tweet_id(); i <- i + 1;}"],"filenum":[1,1,1,1,null,1,1,1,1,1,1,1,null,1,1,1,1,1,1,1,null,1,1,1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,1,1],"linenum":[5,5,5,5,null,5,5,5,5,5,5,5,null,5,5,5,5,5,5,5,null,5,5,5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,7,7],"memalloc":[23.0503616333008,36.553955078125,45.7749404907227,59.5509948730469,63.9810791015625,63.9810791015625,42.6518173217773,61.6772842407227,29.1191177368164,49.2999038696289,18.6499252319336,39.4083251953125,63.9640274047852,63.9640274047852,30.9225006103516,62.5281066894531,23.7150115966797,55.3576583862305,16.9542007446289,48.3696746826172,63.9970474243164,63.9970474243164,38.8452682495117,38.8452682495117,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,58.7992477416992,60.5789794921875],"meminc":[0,13.5035934448242,9.22098541259766,13.7760543823242,4.43008422851562,0,-21.3292617797852,19.0254669189453,-32.5581665039062,20.1807861328125,-30.6499786376953,20.7583999633789,24.5557022094727,0,-33.0415267944336,31.6056060791016,-38.8130950927734,31.6426467895508,-38.4034576416016,31.4154739379883,15.6273727416992,0,-25.1517791748047,0,19.9539794921875,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1.77973175048828],"filename":["<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"<expr>","<expr>"]},"interval":10,"files":[{"filename":"<expr>","content":"profvis::profvis({\n  get_tweet_id <- function() return(1);\n  has_next_tweet <- function(i) i < 10000;\n  k <- numeric(); i <- 1;\n  while (has_next_tweet(i)) {k <- c(k, get_tweet_id()); i <- i + 1;}\n  k <- numeric(); i <- 1;\n  while (has_next_tweet(i)) {k[i] <- get_tweet_id(); i <- i + 1;}\n})","normpath":"<expr>"}],"prof_output":"/tmp/RtmpS7yfcR/file12621b6a2a7e.prof","highlight":{"output":["^output\\$"],"gc":["^<GC>$"],"stacktrace":["^\\.\\.stacktraceo(n|ff)\\.\\.$"]},"split":"h"}},"evals":[],"jsHooks":[]}</script>
 
 ---
 # drake

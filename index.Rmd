@@ -104,6 +104,7 @@ However, this stopped from using `data.table` until I had to switch to it.
 The memory and data processing efficiency of `data.table`:
   - multi-threading processing
   - data processing by reference (the killer feature)
+  - indexing like a database
   
 ---
 # data.table
