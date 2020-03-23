@@ -149,9 +149,148 @@ map_chr(letters, ~.x)
 ```
 
 ---
+# purrr from tidyverse
+Two missing features from `purrr`
+  - progress bar (a simple workaround)
+  - simple parallelization (where `furrr` comes in)
+```{r eval=FALSE}
+pb <- progress_estimated(length(files))
+map(files, function(f) {
+  pb$tick()$print()
+  # do something
+})
+```
+  
+---
 class: inverse, center, middle
 
 # Parallel computation
+
+---
+# parallel::mclapply
+The `parallel` is a built-in package provided by R that handles concurrent/parallel computing. The typical `makeCluster` by default creates slave R processes and require handling environment.
+```{r eval=FALSE}
+fxx <- function(x) {x + xx}
+xx <- 3
+cluster <- makeCluster(2)
+clusterExport(cluster, "xx")
+parSapply(cl = cluster, X = 1:10, FUN = fxx)
+stopCluster(cluster)
+```
+You can choose to do `makeCluster(2, type = 'fork')`.
+
+---
+# parallel::mclapply
+I prefer `mclapply` instead due to its simplicity
+```{r eval=FALSE}
+fxx <- function(x) {x + xx}
+xx <- 3
+mclapply(X = 1:10, FUN = fxx, mc.cores = 10)
+```
+
+---
+# parallel::mclapply
+Sometimes we need to avoid forking processes due to
+  - forking within Rstudio can be problematic
+  - might consume more memory when your environment objects are small
+
+---
+# future
+It provides a unified API interface for different concurrent/paralll computing strategies.
+
+---
+# future
+```{r}
+v <- {
+ cat("Hello world!\n")
+ 3.14
+}
+v
+plan(sequential)
+v %<-% {
+ cat("Hello world!\n")
+ 3.14
+}
+v
+```
+
+---
+# future
+| Name            | OSes        | Description
+|:----------------|:------------|:-----------------------------------------------------
+| _synchronous:_  |             | _non-parallel:_
+| `sequential`    | all         | sequentially and in the current R process
+| `transparent`   | all         | as sequential w/ early signaling and w/out local (for debugging)
+| _asynchronous:_ |             | _parallel_:
+| `multiprocess`  | all         | multicore, if supported, otherwise multisession
+| `multisession`  | all         | background R sessions (on current machine)
+| `multicore`     | not Windows/not RStudio | forked R processes (on current machine)
+| `cluster`       | all         | external R sessions on current, local, and/or remote machines
+| `remote`        | all         | Simple access to remote R sessions
+
+---
+# future
+A big advantage of using `multisession` from `future` is the environment handling. The package itself will try to determine what variables are used within the code block then export them to the slave R sessions. This generally works well.
+```{r}
+plan(multisession, workers = 2)
+Sys.getpid()
+x <- 1
+a %<-% {
+  x + 1
+  Sys.getpid()
+}
+a
+```
+
+---
+# future and furrr
+`furrr` is a succinct wrap of `purrr` powered by `future`
+```{r eval=FALSE}
+iris %>%
+  split(.$Species) %>%
+  map(~lm(Petal.Length~Petal.Width, data = .x))
+
+plan(multisession)
+iris %>%
+  split(.$Species) %>%
+  future_map(~lm(Petal.Length~Petal.Width, data = .x))
+```
+
+---
+# future and furrr
+If you have multiple remote hosts, `future` allows you to cook on them easily!
+```{r eval=FALSE}
+plan(remtoe, workers = c('cray', 'dijkstra'))
+future_map(c(1, 2), function(task_id) {
+  heavy jobs to run on each remote
+})
+```
+
+---
+# future and furrr
+You can also have a hierachical plan to detail the resources you need.
+```{r eval=FALSE}
+plan(list(tweak(remtoe, workers = c('cray', 'dijkstra')),
+          tweak(multisession, workers = 40)))
+future_map(c(1, 2), function(first_level_task_id) {
+  future_map(1:10, function(second_level_task_id) {
+    do something here
+  })
+})
+
+plan(list(tweak(remtoe, workers = c('cray', 'cray', 'dijkstra', 'dijkstra', 'hephaestos')),
+          tweak(multisession, workers = 20)))
+```
+
+---
+# future.batchtools
+Additional futures for evaluating R expressions via job schedulers such as Slurm (CSIRO cluster), TORQUE/PBS (NCI), Oracle/Sun Grid Engine and Load Sharing Facility are also available. Not sure which one is UTS cluster using.
+
+
+---
+class: inverse, center, middle
+
+# Other tools
 
 ---
 # profvis
@@ -166,3 +305,25 @@ profvis::profvis({
 })
 ```
 
+---
+# drake
+A promising package I wanted to use but never get to. "An R-focused pipeline toolkit for reproducibility and high-performance computing."
+```{r eval=FALSE}
+plan <- drake_plan(
+  raw_data = readxl::read_excel(file_in("raw_data.xlsx")),
+  data = raw_data %>%
+    mutate(Species = forcats::fct_inorder(Species)),
+  hist = create_plot(data),
+  fit = lm(Sepal.Width ~ Petal.Width + Species, data),
+  report = rmarkdown::render(
+    knitr_in("report.Rmd"),
+    output_file = file_out("report.html"),
+    quiet = TRUE
+  )
+)
+make(plan)
+```
+
+---
+# drake
+![drake plan](https://camo.githubusercontent.com/e9cd15743788ea28d336848828f458aad86f1ad9/68747470733a2f2f646f63732e726f70656e7363692e6f72672f6472616b652f7265666572656e63652f666967757265732f67726170682e706e67)

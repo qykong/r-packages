@@ -248,6 +248,191 @@ map_chr(letters, ~.x)
 ```
 
 ---
+# purrr from tidyverse
+Two missing features from `purrr`
+  - progress bar (a simple workaround)
+  - simple parallelization (where `furrr` comes in)
+
+```r
+pb &lt;- progress_estimated(length(files))
+map(files, function(f) {
+  pb$tick()$print()
+  # do something
+})
+```
+  
+---
+class: inverse, center, middle
+
+# Parallel computation
+
+---
+# parallel::mclapply
+The `parallel` is a built-in package provided by R that handles concurrent/parallel computing. The typical `makeCluster` by default creates slave R processes and require handling environment.
+
+```r
+fxx &lt;- function(x) {x + xx}
+xx &lt;- 3
+cluster &lt;- makeCluster(2)
+clusterExport(cluster, "xx")
+parSapply(cl = cluster, X = 1:10, FUN = fxx)
+stopCluster(cluster)
+```
+You can choose to do `makeCluster(2, type = 'fork')`.
+
+---
+# parallel::mclapply
+I prefer `mclapply` instead due to its simplicity
+
+```r
+fxx &lt;- function(x) {x + xx}
+xx &lt;- 3
+mclapply(X = 1:10, FUN = fxx, mc.cores = 10)
+```
+
+---
+# parallel::mclapply
+Sometimes we need to avoid forking processes due to
+  - forking within Rstudio can be problematic
+  - might consume more memory when your environment objects are small
+
+---
+# future
+It provides a unified API interface for different concurrent/paralll computing strategies.
+
+---
+# future
+
+```r
+v &lt;- {
+ cat("Hello world!\n")
+ 3.14
+}
+```
+
+```
+## Hello world!
+```
+
+```r
+v
+```
+
+```
+## [1] 3.14
+```
+
+```r
+plan(sequential)
+v %&lt;-% {
+ cat("Hello world!\n")
+ 3.14
+}
+v
+```
+
+```
+## Hello world!
+```
+
+```
+## [1] 3.14
+```
+
+---
+# future
+| Name            | OSes        | Description
+|:----------------|:------------|:-----------------------------------------------------
+| _synchronous:_  |             | _non-parallel:_
+| `sequential`    | all         | sequentially and in the current R process
+| `transparent`   | all         | as sequential w/ early signaling and w/out local (for debugging)
+| _asynchronous:_ |             | _parallel_:
+| `multiprocess`  | all         | multicore, if supported, otherwise multisession
+| `multisession`  | all         | background R sessions (on current machine)
+| `multicore`     | not Windows/not RStudio | forked R processes (on current machine)
+| `cluster`       | all         | external R sessions on current, local, and/or remote machines
+| `remote`        | all         | Simple access to remote R sessions
+
+---
+# future
+A big advantage of using `multisession` from `future` is the environment handling. The package itself will try to determine what variables are used within the code block then export them to the slave R sessions. This generally works well.
+
+```r
+plan(multisession, workers = 2)
+Sys.getpid()
+```
+
+```
+## [1] 14160
+```
+
+```r
+x &lt;- 1
+a %&lt;-% {
+  x + 1
+  Sys.getpid()
+}
+a
+```
+
+```
+## [1] 14218
+```
+
+---
+# future and furrr
+`furrr` is a succinct wrap of `purrr` powered by `future`
+
+```r
+iris %&gt;%
+  split(.$Species) %&gt;%
+  map(~lm(Petal.Length~Petal.Width, data = .x))
+
+plan(multisession)
+iris %&gt;%
+  split(.$Species) %&gt;%
+  future_map(~lm(Petal.Length~Petal.Width, data = .x))
+```
+
+---
+# future and furrr
+If you have multiple remote hosts, `future` allows you to cook on them easily!
+
+```r
+plan(remtoe, workers = c('cray', 'dijkstra'))
+future_map(c(1, 2), function(task_id) {
+  heavy jobs to run on each remote
+})
+```
+
+---
+# future and furrr
+You can also have a hierachical plan to detail the resources you need.
+
+```r
+plan(list(tweak(remtoe, workers = c('cray', 'dijkstra')),
+          tweak(multisession, workers = 40)))
+future_map(c(1, 2), function(first_level_task_id) {
+  future_map(1:10, function(second_level_task_id) {
+    do something here
+  })
+})
+
+plan(list(tweak(remtoe, workers = c('cray', 'cray', 'dijkstra', 'dijkstra', 'hephaestos')),
+          tweak(multisession, workers = 20)))
+```
+
+---
+# future.batchtools
+Additional futures for evaluating R expressions via job schedulers such as Slurm (CSIRO cluster), TORQUE/PBS (NCI), Oracle/Sun Grid Engine and Load Sharing Facility are also available. Not sure which one is UTS cluster using.
+
+
+---
+class: inverse, center, middle
+
+# Other tools
+
+---
 # profvis
 
 ```r
@@ -261,8 +446,32 @@ profvis::profvis({
 })
 ```
 
-<div id="htmlwidget-b5abfa8deaac3588505f" style="width:100%;height:600px;" class="profvis html-widget"></div>
-<script type="application/json" data-for="htmlwidget-b5abfa8deaac3588505f">{"x":{"message":{"prof":{"time":[1,2,3,4,5,6,6,7,8,9,10,11,11,12,13,14,15,16,16,17,18,19,20,21,22,23,23],"depth":[1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1],"label":["c","c","c","c","c","<GC>","c","c","c","c","while (has_next_tweet(i)) {k <- c(k, get_tweet_id()); i <- i + 1;}","<GC>","c","c","c","c","c","<GC>","c","c","c","c","c","c","c","while (has_next_tweet(i)) {k[i] <- get_tweet_id(); i <- i + 1;}","has_next_tweet"],"filenum":[1,1,1,1,1,null,1,1,1,1,1,null,1,1,1,1,1,null,1,1,1,1,1,1,1,1,1],"linenum":[5,5,5,5,5,null,5,5,5,5,5,null,5,5,5,5,5,null,5,5,5,5,5,5,5,7,7],"memalloc":[26.5903396606445,36.9729690551758,45.2582473754883,50.8023376464844,59.4033050537109,63.9955444335938,63.9955444335938,34.3283462524414,54.5276565551758,18.5724792480469,39.6474914550781,63.9771118164062,63.9771118164062,26.3829345703125,58.8762130737305,15.5953826904297,47.8763656616211,63.9527587890625,63.9527587890625,39.4036865234375,60.9400939941406,30.0859451293945,51.6235275268555,21.7046508789062,43.2269821166992,53.9420623779297,53.9420623779297],"meminc":[0,10.3826293945312,8.2852783203125,5.54409027099609,8.60096740722656,4.59223937988281,0,-29.6671981811523,20.1993103027344,-35.9551773071289,21.0750122070312,24.3296203613281,0,-37.5941772460938,32.493278503418,-43.2808303833008,32.2809829711914,16.0763931274414,0,-24.549072265625,21.5364074707031,-30.8541488647461,21.5375823974609,-29.9188766479492,21.522331237793,10.7150802612305,0],"filename":["<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>","<expr>","<expr>","<expr>","<expr>"]},"interval":10,"files":[{"filename":"<expr>","content":"profvis::profvis({\n  get_tweet_id <- function() return(1);\n  has_next_tweet <- function(i) i < 10000;\n  k <- numeric(); i <- 1;\n  while (has_next_tweet(i)) {k <- c(k, get_tweet_id()); i <- i + 1;}\n  k <- numeric(); i <- 1;\n  while (has_next_tweet(i)) {k[i] <- get_tweet_id(); i <- i + 1;}\n})","normpath":"<expr>"}],"prof_output":"/tmp/RtmpN3heHK/file69a19944db0.prof","highlight":{"output":["^output\\$"],"gc":["^<GC>$"],"stacktrace":["^\\.\\.stacktraceo(n|ff)\\.\\.$"]},"split":"h"}},"evals":[],"jsHooks":[]}</script>
+<div id="htmlwidget-fedab368116483fe4df9" style="width:100%;height:600px;" class="profvis html-widget"></div>
+<script type="application/json" data-for="htmlwidget-fedab368116483fe4df9">{"x":{"message":{"prof":{"time":[1,2,3,4,5,5,6,7,8,9,10,11,12,12,13,14,15,16,17,18,19,19,20,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21,21],"depth":[1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,1,1,1,1,1,2,1,1,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1],"label":["c","c","c","c","<GC>","c","while (has_next_tweet(i)) {k <- c(k, get_tweet_id()); i <- i + 1;}","c","while (has_next_tweet(i)) {k <- c(k, get_tweet_id()); i <- i + 1;}","c","c","c","<GC>","c","c","c","c","c","c","c","<GC>","c","c","cb$putconst","cmpCallArgs","cmpCallSymFun","cmpCall","cmp","cmpWhileBody","h","tryInline","cmpCall","cmp","genCode","compile","doTryCatch","tryCatchOne","tryCatchList","tryCatch","compiler:::tryCompile"],"filenum":[1,1,1,1,null,1,1,1,1,1,1,1,null,1,1,1,1,1,1,1,null,1,1,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,1],"linenum":[5,5,5,5,null,5,5,5,5,5,5,5,null,5,5,5,5,5,5,5,null,5,5,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,7],"memalloc":[22.5687026977539,31.3492965698242,44.8596649169922,54.0639877319336,63.9811019897461,63.9811019897461,40.7963027954102,60.7301177978516,26.9948654174805,47.5646438598633,16.6582870483398,37.938346862793,63.9640502929688,63.9640502929688,30.4710159301758,62.5281295776367,23.0977020263672,56.0793380737305,17.6883010864258,49.2125778198242,63.9970703125,63.9970703125,41.7478485107422,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078,58.8219757080078],"meminc":[0,8.78059387207031,13.510368347168,9.20432281494141,9.9171142578125,0,-23.1847991943359,19.9338150024414,-33.7352523803711,20.5697784423828,-30.9063568115234,21.2800598144531,26.0257034301758,0,-33.493034362793,32.0571136474609,-39.4304275512695,32.9816360473633,-38.3910369873047,31.5242767333984,14.7844924926758,0,-22.2492218017578,17.0741271972656,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0],"filename":["<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>","<expr>","<expr>","<expr>","<expr>","<expr>",null,"<expr>","<expr>",null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,null,"<expr>"]},"interval":10,"files":[{"filename":"<expr>","content":"profvis::profvis({\n  get_tweet_id <- function() return(1);\n  has_next_tweet <- function(i) i < 10000;\n  k <- numeric(); i <- 1;\n  while (has_next_tweet(i)) {k <- c(k, get_tweet_id()); i <- i + 1;}\n  k <- numeric(); i <- 1;\n  while (has_next_tweet(i)) {k[i] <- get_tweet_id(); i <- i + 1;}\n})","normpath":"<expr>"}],"prof_output":"/tmp/RtmpxND8Ho/file3750c004812.prof","highlight":{"output":["^output\\$"],"gc":["^<GC>$"],"stacktrace":["^\\.\\.stacktraceo(n|ff)\\.\\.$"]},"split":"h"}},"evals":[],"jsHooks":[]}</script>
+
+---
+# drake
+A promising package I wanted to use but never get to. "An R-focused pipeline toolkit for reproducibility and high-performance computing."
+
+```r
+plan &lt;- drake_plan(
+  raw_data = readxl::read_excel(file_in("raw_data.xlsx")),
+  data = raw_data %&gt;%
+    mutate(Species = forcats::fct_inorder(Species)),
+  hist = create_plot(data),
+  fit = lm(Sepal.Width ~ Petal.Width + Species, data),
+  report = rmarkdown::render(
+    knitr_in("report.Rmd"),
+    output_file = file_out("report.html"),
+    quiet = TRUE
+  )
+)
+make(plan)
+```
+
+---
+# drake
+![drake plan](https://camo.githubusercontent.com/e9cd15743788ea28d336848828f458aad86f1ad9/68747470733a2f2f646f63732e726f70656e7363692e6f72672f6472616b652f7265666572656e63652f666967757265732f67726170682e706e67)
     </textarea>
 <style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
 <script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
